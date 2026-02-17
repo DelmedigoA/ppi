@@ -62,9 +62,15 @@ retailers:
       - action: goto
         url: "{base_url}/products/{product_id}"
       - action: wait_for_selector
-        selector: "sale-price"
+        selector: "body"
         timeout_ms: 30000
-        state: "visible"
+        state: "attached"
+
+    not_found:
+      any_selectors:
+        - "text=WE CAN'T FIND WHAT YOU NEED"
+        - "text=WE CAN’T FIND WHAT YOU NEED"
+        - "text=404"
 
     pricing:
       final_price:

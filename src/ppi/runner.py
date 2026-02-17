@@ -18,6 +18,14 @@ from .targets import load_targets
 _num_re = re.compile(r"(\d+(?:\.\d+)?)")
 
 
+class NotFoundError(ValueError):
+    """Raised when a page resolves to a hard/soft not-found state."""
+
+    def __init__(self, message: str, *, http_status: int | None = None) -> None:
+        super().__init__(message)
+        self.http_status = http_status
+
+
 def normalize_price_text(value: str | None) -> str | None:
     """Keep price as a string while extracting the first numeric token when present."""
     if not value:
@@ -54,6 +62,16 @@ def execute_flow(page, flow: list[dict[str, Any]]) -> None:
             raise ValueError(f"Unsupported action: {action}")
 
 
+def detect_not_found_selector(page, ret_cfg: dict[str, Any]) -> str | None:
+    """Return the first matched not_found selector for soft-404 detection."""
+    not_found_cfg = ret_cfg.get("not_found", {})
+    selectors = not_found_cfg.get("any_selectors", [])
+    for sel in selectors:
+        if page.locator(sel).count() > 0:
+            return sel
+    return None
+
+
 def run_one(page, ret_cfg: dict[str, Any], context: dict[str, Any]) -> dict[str, Any]:
     """Scrape one target row for a retailer configuration."""
     url = build_url(ret_cfg, context)
@@ -61,21 +79,33 @@ def run_one(page, ret_cfg: dict[str, Any], context: dict[str, Any]) -> dict[str,
     goto_timeout_ms = ret_cfg.get("goto_timeout_ms", 30000)
 
     try:
-        page.goto(url, wait_until=goto_wait_until, timeout=goto_timeout_ms)
+        response = page.goto(url, wait_until=goto_wait_until, timeout=goto_timeout_ms)
     except PlaywrightTimeoutError:
         if goto_wait_until == "networkidle":
             # Some retailer pages keep background connections alive and never
             # become "networkidle" even when all product data is already visible.
             # Fall back to DOM readiness to avoid hanging on valid pages.
-            page.goto(url, wait_until="domcontentloaded", timeout=goto_timeout_ms)
+            response = page.goto(url, wait_until="domcontentloaded", timeout=goto_timeout_ms)
         else:
             raise
 
+    http_status = response.status if response else None
+    if http_status == 404:
+        raise NotFoundError("HTTP 404", http_status=http_status)
+
     execute_flow(page, ret_cfg["flow"])
+
+    not_found_selector = detect_not_found_selector(page, ret_cfg)
+    if not_found_selector:
+        raise NotFoundError(
+            f"Soft 404 / product not found (matched: {not_found_selector})",
+            http_status=http_status,
+        )
 
     out: dict[str, Any] = {
         "url": url,
         "collected_at": datetime.now(UTC).isoformat(),
+        "http_status": http_status,
         "final_price": None,
         "discount": None,
         "discount_flag": False,
@@ -138,6 +168,12 @@ def run_pipeline(
 
                     result = run_one(page, retailers[retailer_id], row)
                     out = {**out, **result, "retailer_id": retailer_id, "product_id": product_id}
+                except NotFoundError as exc:
+                    out = {
+                        **out,
+                        "http_status": exc.http_status,
+                        "error": "NOT_FOUND",
+                    }
                 except Exception as exc:
                     try:
                         debug_dir = Path("output/debug")
