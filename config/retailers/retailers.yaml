@@ -32,7 +32,7 @@ retailers:
 
   ksp:
     base_url: "https://ksp.co.il/web"
-    goto_wait_until: "networkidle"
+    goto_wait_until: "domcontentloaded"
 
     flow:
       - action: goto
@@ -56,7 +56,7 @@ retailers:
 
   renuar:
     base_url: "https://renuar.co.il"
-    goto_wait_until: "networkidle"
+    goto_wait_until: "domcontentloaded"
 
     flow:
       - action: goto
