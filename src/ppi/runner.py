@@ -10,7 +10,7 @@ from typing import Any
 from patchright.sync_api import TimeoutError as PlaywrightTimeoutError
 from patchright.sync_api import sync_playwright
 
-from .config import get_retailers, load_yaml
+from .config import get_retailers, load_yaml, normalize_retailers
 from .io import base_output_row, ensure_output_parent, open_output_writer
 from .selectors import first_value
 from .targets import load_targets
@@ -36,13 +36,54 @@ def build_url(ret_cfg: dict[str, Any], context: dict[str, Any]) -> str:
     raise ValueError("No 'goto' step in flow")
 
 
-def execute_flow(page, flow: list[dict[str, Any]]) -> None:
-    """Run flow actions after initial page goto."""
+def _extract_field_value(page, field_spec: dict[str, Any]) -> str | None:
+    selectors = field_spec.get("selectors_priority")
+    if selectors:
+        return first_value(page, selectors)
+    return first_value(page, [field_spec["selector"]])
+
+
+def _apply_extract(page, retailer_id: str, step: dict[str, Any], out: dict[str, Any]) -> None:
+    fields = step["fields"]
+    for field_name, field_spec in fields.items():
+        selectors = field_spec.get("selectors_priority") or [field_spec["selector"]]
+        value = _extract_field_value(page, field_spec)
+        optional = bool(field_spec.get("optional", False))
+
+        if value is None:
+            if optional:
+                out[field_name] = None
+                continue
+            raise ValueError(
+                f"Retailer '{retailer_id}' required field '{field_name}' could not be extracted; "
+                f"tried selectors: {selectors}"
+            )
+
+        out[field_name] = value
+        if field_name == "discount":
+            out["discount_flag"] = True
+            if field_spec.get("discounted_price_override", False):
+                out["final_price"] = normalize_price_text(value)
+        elif field_name == "final_price":
+            out["final_price"] = normalize_price_text(value)
+        elif field_name == "unit_price":
+            out["unit_price_text"] = value
+
+
+def execute_flow(page, retailer_id: str, ret_cfg: dict[str, Any], flow: list[dict[str, Any]], out: dict[str, Any]) -> None:
+    """Run flow actions sequentially."""
+    default_wait_until = ret_cfg.get("goto_wait_until", "domcontentloaded")
+    goto_timeout_ms = ret_cfg.get("goto_timeout_ms", 30000)
+
     for step in flow:
         action = step["action"]
         if action == "goto":
-            continue
-        if action == "wait_for_selector":
+            page.goto(
+                step["url"].format(**out, base_url=ret_cfg["base_url"]),
+                wait_until=step.get("wait_until", default_wait_until),
+                timeout=step.get("timeout_ms", goto_timeout_ms),
+            )
+        elif action == "wait_for_selector":
             page.wait_for_selector(
                 step["selector"],
                 timeout=step.get("timeout_ms", 30000),
@@ -50,26 +91,15 @@ def execute_flow(page, flow: list[dict[str, Any]]) -> None:
             )
         elif action == "wait_for_timeout":
             page.wait_for_timeout(step.get("timeout_ms", 1000))
+        elif action == "extract":
+            _apply_extract(page, retailer_id, step, out)
         else:
             raise ValueError(f"Unsupported action: {action}")
 
 
-def run_one(page, ret_cfg: dict[str, Any], context: dict[str, Any]) -> dict[str, Any]:
+def run_one(page, retailer_id: str, ret_cfg: dict[str, Any], context: dict[str, Any]) -> dict[str, Any]:
     """Scrape one target row for a retailer configuration."""
     url = build_url(ret_cfg, context)
-    goto_wait_until = ret_cfg.get("goto_wait_until", "domcontentloaded")
-    goto_timeout_ms = ret_cfg.get("goto_timeout_ms", 30000)
-
-    try:
-        page.goto(url, wait_until=goto_wait_until, timeout=goto_timeout_ms)
-    except PlaywrightTimeoutError:
-        if goto_wait_until == "networkidle":
-            page.goto(url, wait_until="domcontentloaded", timeout=goto_timeout_ms)
-        else:
-            raise
-
-    execute_flow(page, ret_cfg["flow"])
-
     out: dict[str, Any] = {
         "url": url,
         "collected_at": datetime.now(UTC).isoformat(),
@@ -77,26 +107,17 @@ def run_one(page, ret_cfg: dict[str, Any], context: dict[str, Any]) -> dict[str,
         "discount": None,
         "discount_flag": False,
         "unit_price_text": None,
+        **context,
     }
 
-    pricing = ret_cfg.get("pricing", {})
-    selectors_priority = pricing.get("final_price", {}).get("selectors_priority", [])
-    if selectors_priority:
-        out["final_price"] = normalize_price_text(first_value(page, selectors_priority))
-
-    disc = ret_cfg.get("discount")
-    if disc and disc.get("selector"):
-        loc = page.locator(disc["selector"]).first
-        disc_text = loc.inner_text().strip() if loc.count() else None
-        out["discount"] = disc_text
-        out["discount_flag"] = bool(disc_text)
-        if out["discount_flag"] and disc.get("discounted_price_override", False):
-            out["final_price"] = normalize_price_text(disc_text)
-
-    unit = ret_cfg.get("unit_price")
-    if unit and unit.get("selector"):
-        loc = page.locator(unit["selector"]).first
-        out["unit_price_text"] = loc.inner_text().strip() if loc.count() else None
+    try:
+        execute_flow(page, retailer_id, ret_cfg, ret_cfg["flow"], out)
+    except PlaywrightTimeoutError:
+        if ret_cfg.get("goto_wait_until", "domcontentloaded") == "networkidle":
+            page.goto(url, wait_until="domcontentloaded", timeout=ret_cfg.get("goto_timeout_ms", 30000))
+            execute_flow(page, retailer_id, ret_cfg, ret_cfg["flow"][1:], out)
+        else:
+            raise
 
     return out
 
@@ -110,7 +131,7 @@ def run_pipeline(
 ) -> None:
     """Run the full scrape pipeline and write output CSV."""
     cfg = load_yaml(config_path)
-    retailers = get_retailers(cfg)
+    retailers = normalize_retailers(get_retailers(cfg))
 
     ensure_output_parent(output_path)
 
@@ -133,7 +154,7 @@ def run_pipeline(
                     if not product_id:
                         raise ValueError("Missing product_id in targets.csv row")
 
-                    result = run_one(page, retailers[retailer_id], row)
+                    result = run_one(page, retailer_id, retailers[retailer_id], row)
                     out = {**out, **result, "retailer_id": retailer_id, "product_id": product_id}
                 except Exception as exc:
                     try:
