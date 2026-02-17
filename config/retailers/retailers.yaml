@@ -1,0 +1,28 @@
+retailers:
+  ybitan:
+    base_url: "https://www.ybitan.co.il"
+
+    flow:
+      - action: goto
+        url: "{base_url}/search/{product_id}"
+      - action: wait_for_selector
+        selector: "#product_name"
+
+    extract:
+      price: "span.price"
+
+  ksp:
+    base_url: "https://ksp.co.il/web"
+
+    flow:
+      - action: goto
+        url: "{base_url}/item/{product_id}"
+      - action: wait_for_selector
+        selector: 'span[aria-hidden="true"]:has-text("₪")'
+        timeout_ms: 30000
+
+    extract:
+      price:
+        selector: 'span[aria-hidden="true"]:has-text("₪")'
+        take: "parent_text"
+
