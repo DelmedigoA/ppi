@@ -1,0 +1,15 @@
+README.md
+pyproject.toml
+src/ppi/__init__.py
+src/ppi/config.py
+src/ppi/io.py
+src/ppi/runner.py
+src/ppi/selectors.py
+src/ppi/targets.py
+src/ppi.egg-info/PKG-INFO
+src/ppi.egg-info/SOURCES.txt
+src/ppi.egg-info/dependency_links.txt
+src/ppi.egg-info/requires.txt
+src/ppi.egg-info/top_level.txt
+tests/test_main.py
+tests/test_selectors.py

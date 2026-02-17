@@ -8,7 +8,6 @@ retailers:
       - action: goto
         url: "{base_url}/search/{product_id}"
 
-      # Wait for stable container that always exists
       - action: wait_for_selector
         selector: ".sp-product-price"
         timeout_ms: 30000
@@ -16,28 +15,20 @@ retailers:
 
     pricing:
       final_price:
-        # Priority order:
-        # 1. meta price (clean numeric when discounted)
-        # 2. sale span
-        # 3. regular span
-        # 4. generic span.price
         selectors_priority:
           - 'meta[itemprop="price"]::attr(content)'
           - "span.sale-price"
           - "span.regular-price"
           - "span.price"
 
-    # Real discount = sale block only
     discount:
       selector: "span.sale-price"
       optional: true
       discounted_price_override: false
 
-    # Unit normalization (NOT a discount)
     unit_price:
       selector: "span.normalize-price"
       optional: true
-
 
   ksp:
     base_url: "https://ksp.co.il/web"
@@ -47,9 +38,6 @@ retailers:
       - action: goto
         url: "{base_url}/item/{product_id}"
 
-      # IMPORTANT:
-      # Wait for something that exists on ALL product pages,
-      # not the red discount element.
       - action: wait_for_selector
         selector: 'meta[itemprop="price"], span[aria-hidden="true"]:has-text("₪")'
         timeout_ms: 5000
@@ -57,13 +45,10 @@ retailers:
 
     pricing:
       final_price:
-        # meta price if available, otherwise ₪ container
         selectors_priority:
           - 'meta[itemprop="price"]::attr(content)'
           - 'span[aria-hidden="true"]:has-text("₪")::parent_text'
 
-    # On KSP discount is represented by redPrice container.
-    # If exists → this IS the discounted price.
     discount:
       selector: 'div[class*="redPrice"]'
       optional: true

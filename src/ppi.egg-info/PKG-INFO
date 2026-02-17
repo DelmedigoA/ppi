@@ -1,0 +1,7 @@
+Metadata-Version: 2.4
+Name: ppi
+Version: 0.1.0
+Summary: Price pipeline inspector
+Requires-Python: >=3.10
+Requires-Dist: patchright
+Requires-Dist: pyyaml
