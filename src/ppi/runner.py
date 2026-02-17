@@ -64,9 +64,6 @@ def run_one(page, ret_cfg: dict[str, Any], context: dict[str, Any]) -> dict[str,
         page.goto(url, wait_until=goto_wait_until, timeout=goto_timeout_ms)
     except PlaywrightTimeoutError:
         if goto_wait_until == "networkidle":
-            # Some retailer pages keep background connections alive and never
-            # become "networkidle" even when all product data is already visible.
-            # Fall back to DOM readiness to avoid hanging on valid pages.
             page.goto(url, wait_until="domcontentloaded", timeout=goto_timeout_ms)
         else:
             raise
