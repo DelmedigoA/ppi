@@ -51,3 +51,9 @@ def test_first_value_plain_text():
     page = FakePage({".price": FakeLocator(text=" 42 ")})
     value = first_value(page, [".price"])
     assert value == "42"
+
+
+def test_first_value_normalizes_nbsp():
+    page = FakePage({".price": FakeLocator(text="  55 ")})
+    value = first_value(page, [".price"])
+    assert value == "55"

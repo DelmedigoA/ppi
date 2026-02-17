@@ -27,6 +27,13 @@ def parse_selector(raw: str) -> SelectorSpec:
     return SelectorSpec(selector=sel, mode="text")
 
 
+def normalize_extracted_text(value: str | None) -> str | None:
+    """Trim extracted text and normalize NBSP characters."""
+    if value is None:
+        return None
+    return value.replace("\u00a0", " ").strip()
+
+
 def first_value(page, selectors: Iterable[str]) -> str | None:
     """Return the first available value for a selector priority list."""
     for raw in selectors:
@@ -36,11 +43,14 @@ def first_value(page, selectors: Iterable[str]) -> str | None:
             continue
 
         if spec.mode == "text":
-            return loc.inner_text().strip()
-        if spec.mode == "parent_text":
-            return loc.locator("..").inner_text().strip()
-        if spec.mode == "attr":
+            value = normalize_extracted_text(loc.inner_text())
+        elif spec.mode == "parent_text":
+            value = normalize_extracted_text(loc.locator("..").inner_text())
+        else:
             val = loc.get_attribute(spec.attr)
-            return val.strip() if val else None
+            value = normalize_extracted_text(val)
+
+        if value:
+            return value
 
     return None
