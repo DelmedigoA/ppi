@@ -53,3 +53,25 @@ retailers:
       selector: 'div[class*="redPrice"]'
       optional: true
       discounted_price_override: true
+
+  renuar:
+    base_url: "https://renuar.co.il"
+    goto_wait_until: "networkidle"
+
+    flow:
+      - action: goto
+        url: "{base_url}/products/{product_id}"
+      - action: wait_for_selector
+        selector: "sale-price"
+        timeout_ms: 30000
+        state: "visible"
+
+    pricing:
+      final_price:
+        selectors_priority:
+          - "sale-price"
+
+    discount:
+      selector: "sale-price.price--product-on-sale"
+      optional: true
+      discounted_price_override: false

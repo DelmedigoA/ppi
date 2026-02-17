@@ -1,7 +1,10 @@
 retailer_id,product_id,url,collected_at,final_price,discount,discount_flag,unit_price_text,error
-ybitan,7290000104683,https://www.ybitan.co.il/search/7290000104683,2026-02-17T10:22:37.941213+00:00,27.9,,False,₪3.49 ל-100 גרם,
-ybitan,8700216236751,https://www.ybitan.co.il/search/8700216236751,2026-02-17T10:22:39.399635+00:00,69.9,"מחיר מבצע
+ybitan,7290000104683,https://www.ybitan.co.il/search/7290000104683,2026-02-17T10:32:02.626495+00:00,27.9,,False,₪3.49 ל-100 גרם,
+ybitan,8700216236751,https://www.ybitan.co.il/search/8700216236751,2026-02-17T10:32:04.009119+00:00,69.9,"מחיר מבצע
 ₪69.90
 במקום",True,₪8.74 ל-10 יח',
-ksp,212816,https://ksp.co.il/web/item/212816,2026-02-17T10:22:45.628342+00:00,549,₪549,True,,
-ksp,386225,https://ksp.co.il/web/item/386225,2026-02-17T10:22:48.846789+00:00,215,,False,,
+ksp,212816,https://ksp.co.il/web/item/212816,2026-02-17T10:32:07.384250+00:00,549,₪549,True,,
+ksp,386225,https://ksp.co.il/web/item/386225,2026-02-17T10:32:09.694718+00:00,215,,False,,
+renuar,215820510,https://renuar.co.il/products/215820510,2026-02-17T10:32:40.763168+00:00,79.90,"מחיר מבצע
+79.90 ₪",True,,
+renuar,226751702,https://renuar.co.il/products/226751702,2026-02-17T10:33:12.499538+00:00,149.90,,False,,
