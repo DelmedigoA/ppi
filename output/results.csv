@@ -1,3 +1,7 @@
-retailer_id,product_id,url,price
-ybitan,7290000104683,https://www.ybitan.co.il/search/7290000104683,₪27.90
-ksp,413541,https://ksp.co.il/web/item/413541,₪499
+retailer_id,product_id,url,collected_at,final_price,discount,discount_flag,unit_price_text,error
+ybitan,7290000104683,https://www.ybitan.co.il/search/7290000104683,2026-02-17T09:52:58.129521+00:00,27.9,,False,₪3.49 ל-100 גרם,
+ybitan,8700216236751,https://www.ybitan.co.il/search/8700216236751,2026-02-17T09:52:59.558436+00:00,69.9,"מחיר מבצע
+₪69.90
+במקום",True,₪8.74 ל-10 יח',
+ksp,212816,https://ksp.co.il/web/item/212816,2026-02-17T09:53:02.805207+00:00,549,₪549,True,,
+ksp,386225,https://ksp.co.il/web/item/386225,2026-02-17T09:53:04.550238+00:00,215,,False,,
