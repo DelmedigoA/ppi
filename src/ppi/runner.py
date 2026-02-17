@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from patchright.sync_api import TimeoutError as PlaywrightTimeoutError
 from patchright.sync_api import sync_playwright
 
 from .config import get_retailers, load_yaml
@@ -56,7 +57,20 @@ def execute_flow(page, flow: list[dict[str, Any]]) -> None:
 def run_one(page, ret_cfg: dict[str, Any], context: dict[str, Any]) -> dict[str, Any]:
     """Scrape one target row for a retailer configuration."""
     url = build_url(ret_cfg, context)
-    page.goto(url, wait_until=ret_cfg.get("goto_wait_until", "domcontentloaded"))
+    goto_wait_until = ret_cfg.get("goto_wait_until", "domcontentloaded")
+    goto_timeout_ms = ret_cfg.get("goto_timeout_ms", 30000)
+
+    try:
+        page.goto(url, wait_until=goto_wait_until, timeout=goto_timeout_ms)
+    except PlaywrightTimeoutError:
+        if goto_wait_until == "networkidle":
+            # Some retailer pages keep background connections alive and never
+            # become "networkidle" even when all product data is already visible.
+            # Fall back to DOM readiness to avoid hanging on valid pages.
+            page.goto(url, wait_until="domcontentloaded", timeout=goto_timeout_ms)
+        else:
+            raise
+
     execute_flow(page, ret_cfg["flow"])
 
     out: dict[str, Any] = {
