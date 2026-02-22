@@ -18,6 +18,7 @@ OUTPUT_FIELDS = [
     "discount",
     "discount_flag",
     "unit_price_text",
+    "tries",
     "error",
 ]
 
@@ -38,6 +39,7 @@ def base_output_row(retailer_id: str | None, product_id: str | None) -> dict[str
         "discount": None,
         "discount_flag": False,
         "unit_price_text": None,
+        "tries": 0,
         "error": None,
     }
 

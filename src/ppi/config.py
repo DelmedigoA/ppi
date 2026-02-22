@@ -87,7 +87,7 @@ def normalize_retailers(retailers: dict[str, Any]) -> dict[str, Any]:
         has_extract = False
         for step in flow:
             action = step.get("action")
-            if action not in {"goto", "wait_for_selector", "wait_for_timeout", "extract"}:
+            if action not in {"goto", "wait_for_selector", "wait_for_timeout", "extract", "retry"}:
                 raise ValueError(f"Retailer '{retailer_id}' has unsupported action '{action}'")
             if action == "extract":
                 has_extract = True

@@ -17,6 +17,8 @@ retailers:
     flow:
       - action: goto
         url: "{base_url}/search/{product_id}"
+      - action: retry
+        limit: 3
       - action: wait_for_selector
         selector: ".sp-product-price"
         timeout_ms: 30000
@@ -48,6 +50,8 @@ retailers:
     flow:
       - action: goto
         url: "{base_url}/search/{product_id}"
+      - action: retry
+        limit: 3
       - action: wait_for_selector
         selector: ".sp-product-price"
 
@@ -76,3 +80,10 @@ retailers:
 - Other selectors extract text content.
 - Extracted values are trimmed and normalize NBSP characters.
 - Priority selector lists return the first non-empty extracted value.
+
+
+## Retries
+
+- Add a `retry` action to each retailer flow to control attempts per URL.
+- `retry.limit` sets the max number of tries (default: `1` when omitted).
+- Output CSV includes a `tries` column with the number of attempts used for each row.

@@ -43,6 +43,13 @@ def _extract_field_value(page, field_spec: dict[str, Any]) -> str | None:
     return first_value(page, [field_spec["selector"]])
 
 
+def _resolve_retry_limit(flow: list[dict[str, Any]]) -> int:
+    for step in flow:
+        if step.get("action") == "retry":
+            return int(step.get("limit", 1))
+    return 1
+
+
 def _apply_extract(page, retailer_id: str, step: dict[str, Any], out: dict[str, Any]) -> None:
     fields = step["fields"]
     for field_name, field_spec in fields.items():
@@ -93,6 +100,8 @@ def execute_flow(page, retailer_id: str, ret_cfg: dict[str, Any], flow: list[dic
             page.wait_for_timeout(step.get("timeout_ms", 1000))
         elif action == "extract":
             _apply_extract(page, retailer_id, step, out)
+        elif action == "retry":
+            continue
         else:
             raise ValueError(f"Unsupported action: {action}")
 
@@ -107,17 +116,29 @@ def run_one(page, retailer_id: str, ret_cfg: dict[str, Any], context: dict[str, 
         "discount": None,
         "discount_flag": False,
         "unit_price_text": None,
+        "tries": 0,
         **context,
     }
 
-    try:
-        execute_flow(page, retailer_id, ret_cfg, ret_cfg["flow"], out)
-    except PlaywrightTimeoutError:
-        if ret_cfg.get("goto_wait_until", "domcontentloaded") == "networkidle":
-            page.goto(url, wait_until="domcontentloaded", timeout=ret_cfg.get("goto_timeout_ms", 30000))
-            execute_flow(page, retailer_id, ret_cfg, ret_cfg["flow"][1:], out)
-        else:
-            raise
+    max_tries = _resolve_retry_limit(ret_cfg["flow"])
+    if max_tries < 1:
+        raise ValueError(f"Retailer '{retailer_id}' retry limit must be >= 1")
+
+    for attempt in range(1, max_tries + 1):
+        out["tries"] = attempt
+        try:
+            execute_flow(page, retailer_id, ret_cfg, ret_cfg["flow"], out)
+            return out
+        except PlaywrightTimeoutError:
+            if ret_cfg.get("goto_wait_until", "domcontentloaded") == "networkidle":
+                page.goto(url, wait_until="domcontentloaded", timeout=ret_cfg.get("goto_timeout_ms", 30000))
+                execute_flow(page, retailer_id, ret_cfg, ret_cfg["flow"][1:], out)
+                return out
+            if attempt >= max_tries:
+                raise
+        except Exception:
+            if attempt >= max_tries:
+                raise
 
     return out
 

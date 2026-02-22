@@ -7,6 +7,8 @@ retailers:
     flow:
       - action: goto
         url: "{base_url}/search/{product_id}"
+      - action: retry
+        limit: 3
 
       - action: wait_for_selector
         selector: ".sp-product-price"
@@ -35,6 +37,8 @@ retailers:
     flow:
       - action: goto
         url: "{base_url}/item/{product_id}"
+      - action: retry
+        limit: 3
 
       - action: wait_for_selector
         selector: 'meta[itemprop="price"], span[aria-hidden="true"]:has-text("₪")'
@@ -58,6 +62,8 @@ retailers:
     flow:
       - action: goto
         url: "{base_url}/products/{product_id}"
+      - action: retry
+        limit: 3
       - action: wait_for_selector
         selector: "sale-price"
         timeout_ms: 30000

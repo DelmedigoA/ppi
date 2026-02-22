@@ -102,6 +102,54 @@ def test_run_one_networkidle_timeout_fallback(monkeypatch):
     assert any(c[0] == "goto" for c in page.calls)
 
 
+
+def test_run_one_retries_until_success(monkeypatch):
+    page = RecordingPage()
+    calls = {"n": 0}
+
+    def flaky_execute_flow(_page, _retailer_id, _ret_cfg, _flow, out):
+        calls["n"] += 1
+        if calls["n"] < 3:
+            raise ValueError("transient")
+        out["final_price"] = "19.90"
+
+    monkeypatch.setattr(runner, "execute_flow", flaky_execute_flow)
+
+    cfg = {
+        "base_url": "https://example.com",
+        "flow": [
+            {"action": "goto", "url": "{base_url}/p/{product_id}"},
+            {"action": "retry", "limit": 3},
+            {"action": "extract", "fields": {"final_price": {"selector": ".price", "optional": True}}},
+        ],
+    }
+
+    out = runner.run_one(page, "demo", cfg, {"product_id": "1"})
+    assert out["tries"] == 3
+    assert out["final_price"] == "19.90"
+
+
+def test_run_one_retries_respects_limit(monkeypatch):
+    page = RecordingPage()
+
+    def always_fail(*_args, **_kwargs):
+        raise ValueError("still failing")
+
+    monkeypatch.setattr(runner, "execute_flow", always_fail)
+
+    cfg = {
+        "base_url": "https://example.com",
+        "flow": [
+            {"action": "goto", "url": "{base_url}/p/{product_id}"},
+            {"action": "retry", "limit": 2},
+            {"action": "extract", "fields": {"final_price": {"selector": ".price", "optional": True}}},
+        ],
+    }
+
+    with pytest.raises(ValueError, match="still failing"):
+        runner.run_one(page, "demo", cfg, {"product_id": "1"})
+
+
 def test_run_pipeline_captures_row_errors_and_writes_output(monkeypatch, tmp_path: Path):
     page = RecordingPage()
     writer = DummyWriter()

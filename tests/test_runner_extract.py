@@ -112,3 +112,18 @@ def test_extract_required_field_error_message():
 
     with pytest.raises(ValueError, match="Retailer 'demo' required field 'final_price'.*\\['.a', '.b'\\]"):
         run_one(page, "demo", cfg, {"product_id": "123"})
+
+
+def test_retry_limit_must_be_positive():
+    page = FakePage({})
+    cfg = {
+        "base_url": "https://example.com",
+        "flow": [
+            {"action": "goto", "url": "{base_url}/p/{product_id}"},
+            {"action": "retry", "limit": 0},
+            {"action": "extract", "fields": {"final_price": {"selector": ".a", "optional": True}}},
+        ],
+    }
+
+    with pytest.raises(ValueError, match="retry limit must be >= 1"):
+        run_one(page, "demo", cfg, {"product_id": "123"})
