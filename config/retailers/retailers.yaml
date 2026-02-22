@@ -12,23 +12,21 @@ retailers:
         selector: ".sp-product-price"
         timeout_ms: 30000
         state: "visible"
-
-    pricing:
-      final_price:
-        selectors_priority:
-          - 'meta[itemprop="price"]::attr(content)'
-          - "span.sale-price"
-          - "span.regular-price"
-          - "span.price"
-
-    discount:
-      selector: "span.sale-price"
-      optional: true
-      discounted_price_override: false
-
-    unit_price:
-      selector: "span.normalize-price"
-      optional: true
+      - action: extract
+        fields:
+          final_price:
+            selectors_priority:
+              - 'meta[itemprop="price"]::attr(content)'
+              - "span.sale-price"
+              - "span.regular-price"
+              - "span.price"
+          discount:
+            selector: "span.sale-price"
+            optional: true
+            discounted_price_override: false
+          unit_price:
+            selector: "span.normalize-price"
+            optional: true
 
   ksp:
     base_url: "https://ksp.co.il/web"
@@ -42,17 +40,16 @@ retailers:
         selector: 'meta[itemprop="price"], span[aria-hidden="true"]:has-text("₪")'
         timeout_ms: 5000
         state: "attached"
-
-    pricing:
-      final_price:
-        selectors_priority:
-          - 'meta[itemprop="price"]::attr(content)'
-          - 'span[aria-hidden="true"]:has-text("₪")::parent_text'
-
-    discount:
-      selector: 'div[class*="redPrice"]'
-      optional: true
-      discounted_price_override: true
+      - action: extract
+        fields:
+          final_price:
+            selectors_priority:
+              - 'meta[itemprop="price"]::attr(content)'
+              - 'span[aria-hidden="true"]:has-text("₪")::parent_text'
+          discount:
+            selector: 'div[class*="redPrice"]'
+            optional: true
+            discounted_price_override: true
 
   renuar:
     base_url: "https://renuar.co.il"
@@ -65,13 +62,12 @@ retailers:
         selector: "sale-price"
         timeout_ms: 30000
         state: "visible"
-
-    pricing:
-      final_price:
-        selectors_priority:
-          - "sale-price"
-
-    discount:
-      selector: "sale-price.price--product-on-sale"
-      optional: true
-      discounted_price_override: false
+      - action: extract
+        fields:
+          final_price:
+            selectors_priority:
+              - "sale-price"
+          discount:
+            selector: "sale-price.price--product-on-sale"
+            optional: true
+            discounted_price_override: false
