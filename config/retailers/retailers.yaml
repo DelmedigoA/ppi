@@ -7,6 +7,7 @@ retailers:
     flow:
       - action: goto
         url: "{base_url}/search/{product_id}"
+
       - action: retry
         limit: 3
 
@@ -14,6 +15,7 @@ retailers:
         selector: ".sp-product-price"
         timeout_ms: 30000
         state: "visible"
+
       - action: extract
         fields:
           final_price:
